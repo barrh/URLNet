@@ -22,7 +22,7 @@ def read_data(file_dir):
                 labels.append(0) 
             url = items[1][:-1]
             urls.append(url) 
-    return urls, labels 
+    return urls, labels
 
 def read_parquet(dir_of_parquets:"str", max_data=0)->defaultdict:
     final_res = defaultdict(pd.DataFrame)
@@ -335,6 +335,13 @@ def is_in(a,x):
 def urls_to_ngrams(tokenizer,train_urls,high_freq_words,max_len_words,delimit_mode,max_len_subwords):
     train_sequences = tokenizer.texts_to_sequences(train_urls)
 
+    train_sequences_padded = tf.keras.preprocessing.sequence.pad_sequences(train_sequences,
+                                                                           maxlen=max_len_words,
+                                                                           padding='post', truncating='post')
+    word_x = get_words(train_sequences_padded, tokenizer, delimit_mode, train_urls)
+    ngramed_id_x, ngrams_dict, worded_id_x, words_dict = ngram_id_x(word_x, max_len_subwords,
+                                                                    high_freq_words)
+    return ngramed_id_x, ngrams_dict, worded_id_x, words_dict
 def prep_train_test(pos_x, neg_x, dev_pct): 
     np.random.seed(10) 
     shuffle_indices=np.random.permutation(np.arange(len(pos_x)))
