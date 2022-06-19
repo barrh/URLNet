@@ -28,9 +28,6 @@ parser.add_argument('--data.max_len_subwords', type=int, default=default_max_len
 default_min_word_freq = 1
 parser.add_argument('--data.min_word_freq', type=int, default=default_min_word_freq, metavar="MWF",
   help="minimum frequency of word in training population to build vocabulary (default: {})".format(default_min_word_freq))
-default_dev_pct = 0.001
-parser.add_argument('--data.dev_pct', type=float, default=default_dev_pct, metavar="DEVPCT",
-  help="percentage of training set used for dev (default: {})".format(default_dev_pct))
 parser.add_argument('--data.data_dir', type=str, default='train_10000.txt', metavar="DATADIR",
   help="location of data file")
 default_delimit_mode = 1 
@@ -79,40 +76,38 @@ for key, val in FLAGS.items():
 urls, labels = read_data(FLAGS["data.data_dir"]) 
 
 high_freq_words = None
-if FLAGS["data.min_word_freq"] > 0: 
-    x1, word_reverse_dict = get_word_vocab(urls, FLAGS["data.max_len_words"], FLAGS["data.min_word_freq"]) 
-    high_freq_words = sorted(list(word_reverse_dict.values()))
-    print("Number of words with freq >={}: {}".format(FLAGS["data.min_word_freq"], len(high_freq_words)))  
+train_urls = ds["train"]["normalized_url"].to_list()
+test_urls = ds["test"]["normalized_url"].to_list()
+val_urls = ds["val"]["normalized_url"].to_list()
 
-x, word_reverse_dict = get_word_vocab(urls, FLAGS["data.max_len_words"]) 
-word_x = get_words(x, word_reverse_dict, FLAGS["data.delimit_mode"], urls)
-ngramed_id_x, ngrams_dict, worded_id_x, words_dict = ngram_id_x(word_x, FLAGS["data.max_len_subwords"], high_freq_words)
+
+#x, word_reverse_dict = get_word_vocab(train_urls, FLAGS["data.max_len_words"])
+
+
+
+ngramed_id_x, ngrams_dict, worded_id_x, words_dict = urls_to_ngrams(tokenizer,train_urls,high_freq_words,
+                                                                    FLAGS["data.max_len_words"],
+                                                                    FLAGS["data.delimit_mode"],
+                                                                    FLAGS["data.max_len_subwords"])
 
 chars_dict = ngrams_dict
-chared_id_x = char_id_x(urls, chars_dict, FLAGS["data.max_len_chars"])
+chared_id_x = char_id_x(train_urls, chars_dict, FLAGS["data.max_len_chars"])
 
-pos_x = []
-neg_x = []
-for i in range(len(labels)):
-    label = labels[i] 
-    if label == 1: 
-        pos_x.append(i)
-    else: 
-        neg_x.append(i)
-print("Overall Mal/Ben split: {}/{}".format(len(pos_x), len(neg_x)))
-pos_x = np.array(pos_x) 
-neg_x = np.array(neg_x) 
+labels_ = ds["train"]["label"].to_numpy()
+pos_x_train = np.where(labels_)[0]
+neg_x_train = np.where(labels_==0)[0]
 
-x_train, y_train, x_test, y_test = prep_train_test(pos_x, neg_x, FLAGS["data.dev_pct"])
+print("Overall Mal/Ben split: {}/{}".format(len(pos_x_train), len(neg_x_train)))
+
+_, _,x_train, y_train  = prep_train_test(pos_x_train, neg_x_train, 0)
 
 x_train_char = get_ngramed_id_x(x_train, ngramed_id_x) 
-x_test_char = get_ngramed_id_x(x_test, ngramed_id_x) 
-
-x_train_word = get_ngramed_id_x(x_train, worded_id_x) 
-x_test_word = get_ngramed_id_x(x_test, worded_id_x)  
-
+x_train_word = get_ngramed_id_x(x_train, worded_id_x)
 x_train_char_seq = get_ngramed_id_x(x_train, chared_id_x)
-x_test_char_seq = get_ngramed_id_x(x_test, chared_id_x)
+if False:
+    x_test_char = get_ngramed_id_x(x_test, ngramed_id_x)
+    x_test_word = get_ngramed_id_x(x_test, worded_id_x)
+    x_test_char_seq = get_ngramed_id_x(x_test, chared_id_x)
 
 
 ###################################### Training #########################################################
@@ -264,7 +259,7 @@ with tf.Graph().as_default():
         print("Number of baches in total: {}".format(nb_batches))
         print("Number of batches per epoch: {}".format(nb_batches_per_epoch))
         
-        it = tqdm(range(nb_batches), desc="emb_mode {} delimit_mode {} train_size {}".format(FLAGS["model.emb_mode"], FLAGS["data.delimit_mode"], x_train.shape[0]), ncols=0)
+        it = tqdm(range(nb_batches), desc="emb_mode {} delimit_mode {} train_size {}".format(FLAGS["model.emb_mode"], FLAGS["data.delimit_mode"], y_train.shape[0]), ncols=0)
         for idx in it:
             batch = next(train_batches)
             x_batch, y_batch = prep_batches(batch) 
