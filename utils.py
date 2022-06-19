@@ -122,10 +122,25 @@ def split_url(line, part):
     else:
         return primarydomain, pathtoken, argument, sub_dir, filename, file_extension
 
-def get_word_vocab(urls, max_length_words, min_word_freq=0): 
-    vocab_processor = learn.preprocessing.VocabularyProcessor(max_length_words, min_frequency=min_word_freq) 
-    start = time.time() 
-    x = np.array(list(vocab_processor.fit_transform(urls)))
+def create_tokenizer_from_alexa(max_length_words,urls):
+    tokenizer = tf.keras.preprocessing.text.Tokenizer(oov_token="<UNK>",split='.',filters='',lower=True)
+    complete_urls = []
+    for word in urls:
+        complete_urls.append(word)
+        complete_urls.append("http://.www."+word)
+        complete_urls.append("https://.www." + word)
+        complete_urls.append("https://" + word)
+        complete_urls.append("http://" + word)
+    tokenizer.fit_on_texts(complete_urls)
+    return tokenizer
+
+def get_word_vocab(urls, max_length_words, min_word_freq=0):
+    start = time.time()
+    tokenizer = tf.keras.preprocessing.text.Tokenizer(oov_token="<UNK>",split='/',filters='',lower=True)
+    tokenizer.fit_on_texts(urls)
+    x = tokenizer.texts_to_sequences(urls)
+
+    vocab_processed = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=max_length_words, padding='post', truncating='post')
     print("Finished build vocabulary and mapping to x in {}".format(time.time() - start))
     vocab_dict = vocab_processor.vocabulary_._mapping
     reverse_dict = dict(zip(vocab_dict.values(), vocab_dict.keys()))
