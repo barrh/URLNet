@@ -4,15 +4,26 @@
     "max_len_chars": 200,
     "max_len_subwords": 20,
     "min_word_freq": 1,
-    "data_dir": "data/Malicious_domain_detection/debug_split",
-    "delimit_mode": 1
+    "data_dir": "data/Malicious_domain_detection/",
+    "delimit_mode": 1,
+    "alexa_ranking": "data/Malicious_domain_detection/top-1m.csv"
   },
   "model":
   {
     "emb_dim": 32,
     "filter_sizes": "3,4,5,6",
-    "emb_mode": 1,
-
-
+    "emb_mode": 1
+  },
+  "train": {
+    "nb_epochs": 5,
+    "batch_size": 128,
+    "l2_reg_lambda": 0.0,
+    "lr": 0.001
+  },
+  "log": {
+    "output_dir": "./runs/10000",
+    "print_every": 50,
+    "eval_every": 500,
+    "checkpoint_every": 500
   }
 }
