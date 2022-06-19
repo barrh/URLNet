@@ -107,11 +107,11 @@ def test_step(x, emb_mode):
 checkpoint_file = tf.train.latest_checkpoint(FLAGS["log.checkpoint_dir"])
 graph = tf.Graph() 
 with graph.as_default(): 
-    session_conf = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+    session_conf = tf.compat.v1.ConfigProto(allow_soft_placement=True, log_device_placement=False)
     session_conf.gpu_options.allow_growth=True 
-    sess = tf.Session(config=session_conf)
+    sess = tf.compat.v1.Session(config=session_conf)
     with sess.as_default(): 
-        saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
+        saver = tf.compat.v1.train.import_meta_graph("{}.meta".format(checkpoint_file))
         saver.restore(sess, checkpoint_file) 
         
         if  FLAGS["model.emb_mode"] in [1, 3, 5]: 
