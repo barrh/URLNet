@@ -332,6 +332,8 @@ def is_in(a,x):
         return True 
     else:
         return False 
+def urls_to_ngrams(tokenizer,train_urls,high_freq_words,max_len_words,delimit_mode,max_len_subwords):
+    train_sequences = tokenizer.texts_to_sequences(train_urls)
 
 def prep_train_test(pos_x, neg_x, dev_pct): 
     np.random.seed(10) 
