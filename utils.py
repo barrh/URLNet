@@ -144,7 +144,8 @@ def get_word_vocab(urls, max_length_words, min_word_freq=0):
     print("Finished build vocabulary and mapping to x in {}".format(time.time() - start))
     return vocab_processed, tokenizer
 
-def get_words(x, reverse_dict, delimit_mode, urls=None): 
+def get_words(x, reverse_dict, delimit_mode, urls=None):
+    word_starters = ["http://www","https://www","https://","http://"]
     processed_x = []
     if delimit_mode == 0: 
         for url in x: 
@@ -160,18 +161,41 @@ def get_words(x, reverse_dict, delimit_mode, urls=None):
             word_url = x[i]
             raw_url = urls[i]
             words = []
-            for w in range(len(word_url)): 
-                word_id = word_url[w]
-                if word_id == 0: 
+            for w,word_id in enumerate(word_url):
+                if word_id == 0:
                     words.extend(list(raw_url))
                     break
+                elif word_id==1 and w==0 and raw_url.startswith("http"):
+                    for word_ in word_starters:
+                        if raw_url.startswith(word_):
+                            word = word_
+                            break
+                    else:
+                        print(raw_url)
+                    raw_url = raw_url[len(word):]
+                    domain_ = raw_url.split('.')[0]
+                    if domain_ in reverse_dict.word_index:
+                        words.append(domain_)
+                    else:
+                        special_chars = list(domain_)
+                        words.extend(special_chars)
+                        words.append(word)
+                    raw_url = raw_url[len(domain_) + 1:]
+
                 else: 
-                    word = reverse_dict[word_id]
-                    idx = raw_url.index(word) 
-                    special_chars = list(raw_url[0:idx])
-                    words.extend(special_chars) 
-                    words.append(word) 
-                    raw_url = raw_url[idx+len(word):]
+
+                    if word_id==1:
+                        word = raw_url.split(',')[0]
+                        if len(word)!=1:
+                            special_chars = list(word)
+                            words.extend(special_chars)
+                    else:
+                        word = reverse_dict.index_word[word_id]
+                        idx = raw_url.index(word)
+                        special_chars = list(raw_url[0:idx])
+                        raw_url = raw_url[idx+len(word):]
+                        words.extend(special_chars)
+                    words.append(word)
                     if w == len(word_url) - 1: 
                         words.extend(list(raw_url))
             processed_x.append(words)
