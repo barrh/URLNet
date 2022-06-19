@@ -73,7 +73,10 @@ FLAGS = vars(parser.parse_args())
 for key, val in FLAGS.items():
   print("{}={}".format(key, val))
 
-urls, labels = read_data(FLAGS["data.data_dir"]) 
+#urls, labels = read_data(FLAGS["data.data_dir"])
+top_1M_websites = pd.read_csv(r"top-1m.csv",header=None)
+tokenizer = create_tokenizer_from_alexa(FLAGS["data.max_len_words"],top_1M_websites[1].to_list())
+ds = read_parquet("/mnt/nimble_storage/datasets/Malicious_domain_detection/",1000)
 
 high_freq_words = None
 train_urls = ds["train"]["normalized_url"].to_list()
