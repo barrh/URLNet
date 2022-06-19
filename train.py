@@ -28,9 +28,16 @@ for key, val in FLAGS.items():
 top_1M_websites = pd.read_csv(FLAGS["data"]["alexa_ranking"], header=None)
 tokenizer = create_tokenizer_from_alexa(FLAGS["data"]["max_len_words"], top_1M_websites[1].to_list())
 high_freq_words = None
-train_urls = ds["train"]["normalized_url"].to_list()
-test_urls = ds["test"]["normalized_url"].to_list()
-val_urls = ds["val"]["normalized_url"].to_list()
+debug=True
+if debug:
+    ds = read_parquet(FLAGS["data"]['data_dir'],split=["debug"])
+    train_urls = ds["debug"]["normalized_url"].to_list()
+else:
+    ds = read_parquet(FLAGS["data"]['data_dir'], split=["train","test","val"])
+    
+    train_urls = ds["train"]["normalized_url"].to_list()
+    test_urls = ds["test"]["normalized_url"].to_list()
+    val_urls = ds["val"]["normalized_url"].to_list()
 
 # x, word_reverse_dict = get_word_vocab(train_urls, FLAGS["data.max_len_words"])
 
