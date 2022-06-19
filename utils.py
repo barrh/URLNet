@@ -24,9 +24,9 @@ def read_data(file_dir):
             urls.append(url) 
     return urls, labels
 
-def read_parquet(dir_of_parquets:"str", max_data=0)->defaultdict:
+def read_parquet(dir_of_parquets:"str", max_data=0,split=[])->defaultdict:
     final_res = defaultdict(pd.DataFrame)
-    data_splits = ["train","test","val"]
+    data_splits = ["train","test","val","debug"]
     for folder in os.listdir(dir_of_parquets):
         cur_folder = os.path.join(dir_of_parquets,folder)
         if not os.path.isdir(cur_folder):
