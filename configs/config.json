@@ -1,0 +1,18 @@
+{
+  "Data": {
+    "max_len_words": 200,
+    "max_len_chars": 200,
+    "max_len_subwords": 20,
+    "min_word_freq": 1,
+    "data_dir": "data/Malicious_domain_detection/debug_split",
+    "delimit_mode": 1
+  },
+  "model":
+  {
+    "emb_dim": 32,
+    "filter_sizes": "3,4,5,6",
+    "emb_mode": 1,
+
+
+  }
+}
