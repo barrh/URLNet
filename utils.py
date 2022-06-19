@@ -5,7 +5,9 @@ from collections import defaultdict
 from bisect import bisect_left 
 import tensorflow as tf 
 from tflearn.data_utils import to_categorical 
-from tensorflow.contrib import learn 
+import pandas as pd
+from pyarrow.parquet import ParquetFile
+import pyarrow as pa
 
 def read_data(file_dir): 
     with open(file_dir) as file: 
