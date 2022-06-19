@@ -142,10 +142,7 @@ def get_word_vocab(urls, max_length_words, min_word_freq=0):
 
     vocab_processed = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=max_length_words, padding='post', truncating='post')
     print("Finished build vocabulary and mapping to x in {}".format(time.time() - start))
-    vocab_dict = vocab_processor.vocabulary_._mapping
-    reverse_dict = dict(zip(vocab_dict.values(), vocab_dict.keys()))
-    print("Size of word vocabulary: {}".format(len(reverse_dict)))
-    return x, reverse_dict 
+    return vocab_processed, tokenizer
 
 def get_words(x, reverse_dict, delimit_mode, urls=None): 
     processed_x = []
