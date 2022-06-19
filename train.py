@@ -14,25 +14,12 @@ from TextCNN import *
 from utils import *  
 
 
-# data args 
-default_max_len_words = 200
-parser.add_argument('--data.max_len_words', type=int, default=default_max_len_words, metavar="MLW",
-  help="maximum length of url in words (default: {})".format(default_max_len_words))
-default_max_len_chars = 200
-parser.add_argument('--data.max_len_chars', type=int, default=default_max_len_chars, metavar="MLC",
-  help="maximum length of url in characters (default: {})".format(default_max_len_chars))
-default_max_len_subwords = 20 
-parser.add_argument('--data.max_len_subwords', type=int, default=default_max_len_subwords, metavar="MLSW",
-  help="maxium length of word in subwords/ characters (default: {})".format(default_max_len_subwords))
-default_min_word_freq = 1
-parser.add_argument('--data.min_word_freq', type=int, default=default_min_word_freq, metavar="MWF",
-  help="minimum frequency of word in training population to build vocabulary (default: {})".format(default_min_word_freq))
-parser.add_argument('--data.data_dir', type=str, default='train_10000.txt', metavar="DATADIR",
-  help="location of data file")
-default_delimit_mode = 1 
-parser.add_argument("--data.delimit_mode", type=int, default=default_delimit_mode, metavar="DLMODE",
-  help="0: delimit by special chars, 1: delimit by special chars + each char as a word (default: {})".format(default_delimit_mode))
-
+# data args
+#max_len_words - maximum length of url in words
+#max_len_chars - maximum length of url in characters
+#max_len_subwords - maxium length of word in subwords
+#min_word_freq - minimum frequency of word in training population to build vocabulary
+#delimit_mode - 0: delimit by special chars, 1: delimit by special chars + each char as a word
 # model args 
 default_emb_dim = 32
 parser.add_argument('--model.emb_dim', type=int, default=default_emb_dim, metavar="EMBDIM",
