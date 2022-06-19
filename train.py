@@ -4,7 +4,7 @@ import datetime
 import os
 import pdb 
 import pickle
-import argparse 
+
 import numpy as np 
 from tqdm import tqdm
 from bisect import bisect_left  
@@ -13,7 +13,6 @@ import tensorflow as tf
 from TextCNN import * 
 from utils import *  
 
-parser = argparse.ArgumentParser(description="Train URLNet model") 
 
 # data args 
 default_max_len_words = 200
