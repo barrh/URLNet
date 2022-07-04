@@ -1,13 +1,13 @@
 import time 
 import os 
 import numpy as np
-from collections import defaultdict
+
 from bisect import bisect_left 
 import tensorflow as tf 
 from tflearn.data_utils import to_categorical 
-import pandas as pd
-from pyarrow.parquet import ParquetFile
-import pyarrow as pa
+
+
+import re
 
 def read_data(file_dir): 
     with open(file_dir) as file: 
@@ -23,28 +23,6 @@ def read_data(file_dir):
             url = items[1][:-1]
             urls.append(url) 
     return urls, labels
-
-def read_parquet(dir_of_parquets:"str", max_data=0,split=[])->defaultdict:
-    final_res = defaultdict(pd.DataFrame)
-    data_splits = ["train","test","val","debug"]
-    for folder in os.listdir(dir_of_parquets):
-        cur_folder = os.path.join(dir_of_parquets,folder)
-        if not os.path.isdir(cur_folder):
-            continue
-        for file in os.listdir(cur_folder):
-            if not file.endswith("parquet"):
-                continue
-            for split in data_splits:
-                if split in folder:
-                    if max_data==0:
-                        ds = pd.read_parquet(os.path.join(dir_of_parquets,folder,file))
-                    elif len(final_res[split])<max_data:
-                        pf = ParquetFile(os.path.join(dir_of_parquets, folder, file))
-                        first_ten_rows = next(pf.iter_batches(batch_size=max_data))
-                        ds = pa.Table.from_batches([first_ten_rows]).to_pandas()
-                    final_res[split] = pd.concat([final_res[split],ds])
-                    break
-    return final_res
 
 def split_url(line, part):
     if line.startswith("http://"):
@@ -121,16 +99,18 @@ def split_url(line, part):
             return pathtoken 
     else:
         return primarydomain, pathtoken, argument, sub_dir, filename, file_extension
+def normalize_urls(url_list):
 
+    return [re.sub('/+','.',url) for url in url_list]
 def create_tokenizer_from_alexa(max_length_words,urls):
     tokenizer = tf.keras.preprocessing.text.Tokenizer(oov_token="<UNK>",split='.',filters='',lower=True)
     complete_urls = []
     for word in urls:
         complete_urls.append(word)
-        complete_urls.append("http://.www."+word)
-        complete_urls.append("https://.www." + word)
-        complete_urls.append("https://" + word)
-        complete_urls.append("http://" + word)
+        complete_urls.append("http:.www."+word)
+        complete_urls.append("https:.www." + word)
+        complete_urls.append("https:." + word)
+        complete_urls.append("http:." + word)
     tokenizer.fit_on_texts(complete_urls)
     return tokenizer
 
@@ -145,7 +125,6 @@ def get_word_vocab(urls, max_length_words, min_word_freq=0):
     return vocab_processed, tokenizer
 
 def get_words(x, reverse_dict, delimit_mode, urls=None):
-    word_starters = ["http://www","https://www","https://","http://"]
     processed_x = []
     if delimit_mode == 0: 
         for url in x: 
@@ -157,45 +136,21 @@ def get_words(x, reverse_dict, delimit_mode, urls=None):
                     break
             processed_x.append(words) 
     elif delimit_mode == 1: 
-        for i in range(x.shape[0]):
-            word_url = x[i]
-            raw_url = urls[i]
+        for word_url,raw_url in zip(x,urls):
             words = []
             for w,word_id in enumerate(word_url):
                 if word_id == 0:
                     words.extend(list(raw_url))
                     break
-                elif word_id==1 and w==0 and raw_url.startswith("http"):
-                    for word_ in word_starters:
-                        if raw_url.startswith(word_):
-                            word = word_
-                            break
-                    else:
-                        print(raw_url)
-                    raw_url = raw_url[len(word):]
-                    domain_ = raw_url.split('.')[0]
-                    if domain_ in reverse_dict.word_index:
-                        words.append(domain_)
-                    else:
-                        special_chars = list(domain_)
-                        words.extend(special_chars)
-                        words.append(word)
-                    raw_url = raw_url[len(domain_) + 1:]
-
-                else: 
-
-                    if word_id==1:
-                        word = raw_url.split(',')[0]
-                        if len(word)!=1:
-                            special_chars = list(word)
-                            words.extend(special_chars)
-                    else:
-                        word = reverse_dict.index_word[word_id]
-                        idx = raw_url.index(word)
-                        special_chars = list(raw_url[0:idx])
-                        raw_url = raw_url[idx+len(word):]
-                        words.extend(special_chars)
+                elif word_id==1:
+                    words += list(raw_url.split('.')[0])
+                else:
+                    word = reverse_dict.index_word[word_id]
+                    idx = raw_url.index(word)
+                    special_chars = list(raw_url[0:idx])
+                    words.extend(special_chars)
                     words.append(word)
+                    raw_url = raw_url[idx+len(word)+1:]
                     if w == len(word_url) - 1: 
                         words.extend(list(raw_url))
             processed_x.append(words)
@@ -259,14 +214,11 @@ def ngram_id_x(word_x, max_len_subwords, high_freq_words=None):
         worded_x.append(url_in_words) 
 
     all_ngrams = list(all_ngrams) 
-    ngrams_dict = dict()
-    for i in range(len(all_ngrams)):  
-        ngrams_dict[all_ngrams[i]] = i+1 # ngram id=0 is for padding ngram   
-    print("Size of ngram vocabulary: {}".format(len(ngrams_dict))) 
-    all_words = list(all_words) 
-    words_dict = dict() 
-    for i in range(len(all_words)): 
-        words_dict[all_words[i]] = i+1 #word id=0 for padding word 
+    ngrams_dict = {ngram: i+1 for i,ngram in enumerate(all_ngrams)}
+         # ngram id=0 is for padding ngram
+    print("Size of ngram vocabulary: {}".format(len(ngrams_dict)))
+    words_dict = {word: i + 1 for i, word in enumerate(all_words)}
+    #word id=0 for padding word
     print("Size of word vocabulary: {}".format(len(words_dict)))
     print("Index of <UNKNOWN> word: {}".format(words_dict["<UNKNOWN>"]))        
 
@@ -334,11 +286,11 @@ def is_in(a,x):
         return False 
 def urls_to_ngrams(tokenizer,train_urls,high_freq_words,max_len_words,delimit_mode,max_len_subwords):
     train_sequences = tokenizer.texts_to_sequences(train_urls)
-
-    train_sequences_padded = tf.keras.preprocessing.sequence.pad_sequences(train_sequences,
+    word_x = get_words(tf.keras.preprocessing.sequence.pad_sequences(train_sequences,
                                                                            maxlen=max_len_words,
-                                                                           padding='post', truncating='post')
-    word_x = get_words(train_sequences_padded, tokenizer, delimit_mode, train_urls)
+                                                                           padding='post', truncating='post'),
+                       tokenizer, delimit_mode, train_urls)
+
     ngramed_id_x, ngrams_dict, worded_id_x, words_dict = ngram_id_x(word_x, max_len_subwords,
                                                                     high_freq_words)
     return ngramed_id_x, ngrams_dict, worded_id_x, words_dict
