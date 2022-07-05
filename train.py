@@ -148,8 +148,8 @@ if __name__=="__main__":
     tokenizer = create_tokenizer_from_alexa(FLAGS["data"]["max_len_words"], top_1M_websites[1].to_list())
     high_freq_words = None
     debug = False
-    data_we_train_on = "debug" if debug else "train"
-    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["train_demo", "test_demo", "validation_demo"])
+    data_we_train_on = "debug" if debug else "training_demo"
+    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["training_demo", "test_demo", "validation_demo"])
     train_urls_ = ds[data_we_train_on]["normalized_url"].to_list()
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
