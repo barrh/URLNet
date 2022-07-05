@@ -189,11 +189,9 @@ def ngram_id_x(word_x, max_len_subwords, high_freq_words=None):
     ngramed_x = []
     all_words = set() 
     worded_x = []
-    counter = 0
-    for url in word_x:
+    for counter,url in enumerate(word_x):
         if counter % 100000 == 0: 
-            print("Processing #url {}".format(counter))
-        counter += 1  
+            print("Processing #url {} from {}".format(counter,len(word_x)))
         url_in_ngrams = []
         url_in_words = []
         words = url
