@@ -149,7 +149,7 @@ if __name__=="__main__":
     high_freq_words = None
     debug = False
     data_we_train_on = "debug" if debug else "train"
-    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["train_demo", "test", "val"])
+    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["train_demo", "test_demo", "validation_demo"])
     train_urls_ = ds[data_we_train_on]["normalized_url"].to_list()
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
@@ -159,7 +159,7 @@ if __name__=="__main__":
 
     if not debug:
         all_data = {}
-        for datatype in ["test_demo", "val_demo"]:
+        for datatype in ["test_demo", "validation_demo"]:
             urls_ = ds[datatype]["normalized_url"].to_list()
             labels_ = ds[datatype]["label"].to_numpy()
             all_data[datatype] = get_features_for_data(
@@ -246,7 +246,13 @@ if __name__=="__main__":
                     total_loss = 0
                     nb_corrects = 0
                     nb_instances = 0
-                    test_batches = make_batches(x_test_char_seq, x_test_word, x_test_char, y_test,
+                    #ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train
+                    #        for datatype in ["test_demo", "validation_demo"]:
+
+                    #all_data[datatype]
+                    test_batches = make_batches(all_data["validation_demo"][6], all_data["validation_demo"][5],
+                                                all_data["validation_demo"][4],
+                                                all_data["validation_demo"][7],
                                                 FLAGS['train']['batch_size'], 1, False)
                     for test_batch in test_batches:
                         x_test_batch, y_test_batch = prep_batches(test_batch)
