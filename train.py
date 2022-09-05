@@ -5,8 +5,8 @@ import pickle
 from tqdm import tqdm
 import pandas as pd
 
-from file_utils import read_parquet
-from TextCNN import *
+#from TextCNN import *
+from TextCNN import TextCNN
 from utils import *
 
 def get_features_for_data(train_urls,labels_,tokenizer, high_freq_words, FLAGS):
@@ -44,7 +44,7 @@ def get_features_for_data(train_urls,labels_,tokenizer, high_freq_words, FLAGS):
 
 ###################################### Training #########################################################
 
-def train_dev_step(x, y, emb_mode, is_train=True):
+def train_step(x, y, emb_mode, is_train=True):
     if is_train:
         p = 0.5
     else:
@@ -82,21 +82,19 @@ def train_dev_step(x, y, emb_mode, is_train=True):
             cnn.dropout_keep_prob: p}
     if is_train:
         _, step, loss, acc = sess.run([train_op, global_step, cnn.loss, cnn.accuracy], feed_dict)
-    else:
-        step, loss, acc = sess.run([global_step, cnn.loss, cnn.accuracy], feed_dict)
     return step, loss, acc
 
 
 def make_batches(x_train_char_seq, x_train_word, x_train_char, y_train, batch_size, nb_epochs, shuffle=False):
-    if FLAGS["model"]["emb_mode"] == 1:
+    if args["model"]["emb_mode"] == 1:
         batch_data = list(zip(x_train_char_seq, y_train))
-    elif FLAGS["model"]["emb_mode"] == 2:
+    elif args["model"]["emb_mode"] == 2:
         batch_data = list(zip(x_train_word, y_train))
-    elif FLAGS["model"]["emb_mode"] == 3:
+    elif args["model"]["emb_mode"] == 3:
         batch_data = list(zip(x_train_char_seq, x_train_word, y_train))
-    elif FLAGS["model"]["emb_mode"] == 4:
+    elif args["model"]["emb_mode"] == 4:
         batch_data = list(zip(x_train_char, x_train_word, y_train))
-    elif FLAGS["model"]["emb_mode"] == 5:
+    elif args["model"]["emb_mode"] == 5:
         batch_data = list(zip(x_train_char, x_train_word, x_train_char_seq, y_train))
     batches = batch_iter(batch_data, batch_size, nb_epochs, shuffle)
 
@@ -111,164 +109,77 @@ def make_batches(x_train_char_seq, x_train_word, x_train_char, y_train, batch_si
 
 
 def prep_batches(batch):
-    if FLAGS["model"]["emb_mode"] == 1:
+    if args["model"]["emb_mode"] == 1:
         x_char_seq, y_batch = zip(*batch)
-    elif FLAGS["model"]["emb_mode"] == 2:
+    elif args["model"]["emb_mode"] == 2:
         x_word, y_batch = zip(*batch)
-    elif FLAGS["model"]["emb_mode"] == 3:
+    elif args["model"]["emb_mode"] == 3:
         x_char_seq, x_word, y_batch = zip(*batch)
-    elif FLAGS["model"]["emb_mode"] == 4:
+    elif args["model"]["emb_mode"] == 4:
         x_char, x_word, y_batch = zip(*batch)
-    elif FLAGS["model"]["emb_mode"] == 5:
+    elif args["model"]["emb_mode"] == 5:
         x_char, x_word, x_char_seq, y_batch = zip(*batch)
 
     x_batch = []
-    if FLAGS["model"]["emb_mode"] in [1, 3, 5]:
-        x_char_seq = pad_seq_in_word(x_char_seq, FLAGS["data"]["max_len_chars"])
+    if args["model"]["emb_mode"] in [1, 3, 5]:
+        x_char_seq = pad_seq_in_word(x_char_seq, args["data"]["max_len_chars"])
         x_batch.append(x_char_seq)
-    if FLAGS["model"]["emb_mode"] in [2, 3, 4, 5]:
-        x_word = pad_seq_in_word(x_word, FLAGS["data"]["max_len_words"])
+    if args["model"]["emb_mode"] in [2, 3, 4, 5]:
+        x_word = pad_seq_in_word(x_word, args["data"]["max_len_words"])
         x_batch.append(x_word)
-    if FLAGS["model"]["emb_mode"] in [4, 5]:
-        x_char, x_char_pad_idx = pad_seq(x_char, FLAGS["data"]["max_len_words"], FLAGS["data"]["max_len_subwords"],
-                                         FLAGS["model"]["emb_dim"])
+    if args["model"]["emb_mode"] in [4, 5]:
+        x_char, x_char_pad_idx = pad_seq(x_char, args["data"]["max_len_words"], args["data"]["max_len_subwords"],
+                                         args["model"]["emb_dim"])
         x_batch.extend([x_char, x_char_pad_idx])
     return x_batch, y_batch
 
+
 if __name__=="__main__":
-
     with open("configs/config.json", "r") as f_p:
-        FLAGS = json.load(f_p)
+        args = json.load(f_p)
 
-    for key, val in FLAGS.items():
+    for key, val in args.items():
         print("{}={}".format(key, val))
 
     # urls, labels = read_data(FLAGS["data.data_dir"])
-    top_1M_websites = pd.read_csv(FLAGS["data"]["alexa_ranking"], header=None)
-    tokenizer = create_tokenizer_from_alexa(FLAGS["data"]["max_len_words"], top_1M_websites[1].to_list())
+    top_1M_websites = pd.read_csv(args["data"]["alexa_ranking"], header=None)
+    tokenizer = create_tokenizer_from_alexa(args["data"]["max_len_words"], top_1M_websites[1].to_list())
     high_freq_words = None
-    debug = False
-    data_we_train_on = "debug" if debug else "training_demo"
-    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["training_demo", "test_demo", "validation_demo"])
-    train_urls_ = ds[data_we_train_on]["normalized_url"].to_list()
+
+    train_split, validation_split = [pd.read_parquet(os.path.join(args["data"]['data_dir'], 'debug_split_06_07_2022_11_32_17')),
+                                     pd.read_parquet(os.path.join(args["data"]['data_dir'], 'debug_split_06_07_2022_11_32_17'))]
+    train_urls_ = train_split["normalized_url"].to_list()
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
         train_urls_,
-        ds[data_we_train_on]["label"].to_numpy(),
-        tokenizer, high_freq_words, FLAGS)
+        train_split["label"].to_numpy(),
+        tokenizer, high_freq_words, args)
 
-    if not debug:
-        all_data = {}
-        for datatype in ["test_demo", "validation_demo"]:
-            urls_ = ds[datatype]["normalized_url"].to_list()
-            labels_ = ds[datatype]["label"].to_numpy()
-            all_data[datatype] = get_features_for_data(
-                urls_,
-                labels_,
-                tokenizer, high_freq_words, FLAGS)
+    cnn = TextCNN(
+        char_ngram_vocab_size=len(ngrams_dict) + 1,
+        word_ngram_vocab_size=len(words_dict) + 1,
+        char_vocab_size=len(ngrams_dict) + 1,
+        embedding_size=args["model"]["emb_dim"],
+        word_seq_len=args["data"]["max_len_words"],
+        char_seq_len=args["data"]["max_len_chars"],
+        l2_reg_lambda=args["train"]["l2_reg_lambda"],
+        mode=args["model"]["emb_mode"],
+        filter_sizes=list(map(int, args["model"]["filter_sizes"].split(","))))
 
-    with tf.Graph().as_default():
-        session_conf = tf.compat.v1.ConfigProto(allow_soft_placement=True, log_device_placement=False)
-        session_conf.gpu_options.allow_growth = True
-        sess = tf.compat.v1.Session(config=session_conf)
+    train_batches, nb_batches_per_epoch, nb_batches = make_batches(x_train_char_seq, x_train_word, x_train_char,
+                                                                   y_train, args["train"]["batch_size"],
+                                                                   args['train']['nb_epochs'], True)
 
-        with sess.as_default():
-            cnn = TextCNN(
-                char_ngram_vocab_size=len(ngrams_dict) + 1,
-                word_ngram_vocab_size=len(words_dict) + 1,
-                char_vocab_size=len(ngrams_dict) + 1,
-                embedding_size=FLAGS["model"]["emb_dim"],
-                word_seq_len=FLAGS["data"]["max_len_words"],
-                char_seq_len=FLAGS["data"]["max_len_chars"],
-                l2_reg_lambda=FLAGS["train"]["l2_reg_lambda"],
-                mode=FLAGS["model"]["emb_mode"],
-                filter_sizes=list(map(int, FLAGS["model"]["filter_sizes"].split(","))))
+    min_dev_loss = float('Inf')
+    dev_loss = float('Inf')
+    dev_acc = 0.0
+    print("Number of baches in total: {}".format(nb_batches))
+    print("Number of batches per epoch: {}".format(nb_batches_per_epoch))
 
-            global_step = tf.Variable(0, name="global_step", trainable=False)
-            optimizer = tf.compat.v1.train.AdamOptimizer(FLAGS["train"]["lr"])
-            grads_and_vars = optimizer.compute_gradients(cnn.loss)
-            train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
-
-            print("Writing to {}\n".format(FLAGS["log"]["output_dir"]))
-            if not os.path.exists(FLAGS["log"]["output_dir"]):
-                os.makedirs(FLAGS["log"]["output_dir"])
-
-            # Save dictionary files
-            ngrams_dict_dir = FLAGS["log"]["output_dir"] + "subwords_dict.p"
-            pickle.dump(ngrams_dict, open(ngrams_dict_dir, "wb"))
-            words_dict_dir = FLAGS["log"]["output_dir"] + "words_dict.p"
-            pickle.dump(words_dict, open(words_dict_dir, "wb"))
-
-            # Save training and validation logs
-            train_log_dir = FLAGS["log"]["output_dir"] + "train_logs.csv"
-            with open(train_log_dir, "w") as f:
-                f.write("step,time,loss,acc\n")
-            val_log_dir = FLAGS["log"]["output_dir"] + "val_logs.csv"
-            with open(val_log_dir, "w") as f:
-                f.write("step,time,loss,acc\n")
-
-            # Save model checkpoints
-            checkpoint_dir = FLAGS["log"]["output_dir"] + "checkpoints/"
-            if not os.path.exists(checkpoint_dir):
-                os.makedirs(checkpoint_dir)
-            checkpoint_prefix = checkpoint_dir + "model"
-            saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), max_to_keep=5)
-
-            sess.run(tf.compat.v1.global_variables_initializer())
-
-            train_batches, nb_batches_per_epoch, nb_batches = make_batches(x_train_char_seq, x_train_word, x_train_char,
-                                                                           y_train, FLAGS["train"]["batch_size"],
-                                                                           FLAGS['train']['nb_epochs'], True)
-
-            min_dev_loss = float('Inf')
-            dev_loss = float('Inf')
-            dev_acc = 0.0
-            print("Number of baches in total: {}".format(nb_batches))
-            print("Number of batches per epoch: {}".format(nb_batches_per_epoch))
-
-            it = tqdm(range(nb_batches), desc="emb_mode {} delimit_mode {} train_size {}".format(FLAGS["model"]["emb_mode"],
-                                                                                                 FLAGS["data"]["delimit_mode"],
-                                                                                                 y_train.shape[0]), ncols=0)
-            for idx in it:
-                batch = next(train_batches)
-                x_batch, y_batch = prep_batches(batch)
-                step, loss, acc = train_dev_step(x_batch, y_batch, emb_mode=FLAGS["model"]["emb_mode"], is_train=True)
-                if step % FLAGS["log"]["print_every"] == 0:
-                    with open(train_log_dir, "a") as f:
-                        f.write("{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), loss, acc))
-                    it.set_postfix(
-                        trn_loss='{:.3e}'.format(loss),
-                        trn_acc='{:.3e}'.format(acc),
-                        dev_loss='{:.3e}'.format(dev_loss),
-                        dev_acc='{:.3e}'.format(dev_acc),
-                        min_dev_loss='{:.3e}'.format(min_dev_loss))
-                if step % FLAGS["log"]["eval_every"] == 0 or idx == (nb_batches - 1):
-                    total_loss = 0
-                    nb_corrects = 0
-                    nb_instances = 0
-                    #ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train
-                    #        for datatype in ["test_demo", "validation_demo"]:
-
-                    #all_data[datatype]
-                    test_batches = make_batches(all_data["validation_demo"][6], all_data["validation_demo"][5],
-                                                all_data["validation_demo"][4],
-                                                all_data["validation_demo"][7],
-                                                FLAGS['train']['batch_size'], 1, False)
-                    for test_batch in test_batches:
-                        x_test_batch, y_test_batch = prep_batches(test_batch)
-                        step, batch_dev_loss, batch_dev_acc = train_dev_step(x_test_batch, y_test_batch,
-                                                                             emb_mode=FLAGS["model"]["emb_mode"],
-                                                                             is_train=False)
-                        nb_instances += x_test_batch[0].shape[0]
-                        total_loss += batch_dev_loss * x_test_batch[0].shape[0]
-                        nb_corrects += batch_dev_acc * x_test_batch[0].shape[0]
-
-                    dev_loss = total_loss / nb_instances
-                    dev_acc = nb_corrects / nb_instances
-                    with open(val_log_dir, "a") as f:
-                        f.write(
-                            "{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), dev_loss, dev_acc))
-                    if step % FLAGS["log"]["checkpoint_every"] == 0 or idx == (nb_batches - 1):
-                        if dev_loss < min_dev_loss:
-                            path = saver.save(sess, checkpoint_prefix, global_step=step)
-                            min_dev_loss = dev_loss
+    it = tqdm(range(nb_batches), desc="emb_mode {} delimit_mode {} train_size {}".format(args["model"]["emb_mode"],
+                                                                                         args["data"]["delimit_mode"],
+                                                                                         y_train.shape[0]), ncols=0)
+    for idx in it:
+        batch = next(train_batches)
+        x_batch, y_batch = prep_batches(batch)
+        step, loss, acc = train_step(x_batch, y_batch, emb_mode=args["model"]["emb_mode"], is_train=True)
