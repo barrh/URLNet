@@ -1,10 +1,13 @@
 import tensorflow as tf 
 
+
 class TextCNN(object): 
-    def __init__(self, char_ngram_vocab_size, word_ngram_vocab_size, char_vocab_size, \
-        word_seq_len, char_seq_len, embedding_size, l2_reg_lambda=0, \
-        filter_sizes=[3,4,5,6], mode=0): 
-        if mode == 4 or mode == 5: 
+    def __init__(self, char_ngram_vocab_size, word_ngram_vocab_size, char_vocab_size,
+                 word_seq_len, char_seq_len, embedding_size, l2_reg_lambda=0,
+                 filter_sizes=None, mode=0):
+        if filter_sizes is None:
+            filter_sizes = [3, 4, 5, 6]
+        if mode == 4 or mode == 5:
             self.input_x_char = tf.compat.v1.placeholder(tf.int32, [None, None, None], name="input_x_char")
             self.input_x_char_pad_idx = tf.compat.v1.placeholder(tf.float32, [None, None, None, embedding_size], name="input_x_char_pad_idx")
         if mode == 4 or mode == 5 or mode == 2 or mode == 3: 
