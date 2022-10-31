@@ -2,7 +2,7 @@ import dns.resolver
 from scipy import stats
 from tld import get_tld
 
-from file_utils import read_parquet
+
 
 def get_ttl(domain_):
     try:
@@ -10,7 +10,7 @@ def get_ttl(domain_):
     except:
         return None
     return int(list(soa_answer.response.answer[-1])[0].to_text().split(' ')[-1])
-ds = read_parquet("data/Malicious_domain_detection/", split=["test"])
+ds = pd.read_parquet("data/Malicious_domain_detection/")
 urls = ds["test"]["normalized_url"].to_list()
 labels = ds["test"]["label"].to_list()
 possible_init_strings = ["http://www.","https://www.","http://", "https://"]

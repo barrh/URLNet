@@ -5,7 +5,6 @@ import pickle
 from tqdm import tqdm
 import pandas as pd
 
-from file_utils import read_parquet
 from TextCNN import *
 from utils import *
 
@@ -149,7 +148,7 @@ if __name__=="__main__":
     high_freq_words = None
     debug = False
     data_we_train_on = "debug" if debug else "training_demo"
-    ds = read_parquet(FLAGS["data"]['data_dir'], split=["debug"] if debug else ["training_demo", "test_demo", "validation_demo"])
+    ds = pd.read_parquet(FLAGS["data"]['data_dir'],columns=["normalized_url","label"])
     train_urls_ = ds[data_we_train_on]["normalized_url"].to_list()
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
