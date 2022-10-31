@@ -143,11 +143,13 @@ if __name__=="__main__":
 
     # urls, labels = read_data(FLAGS["data.data_dir"])
     top_1M_websites = pd.read_csv(args["data"]["alexa_ranking"], header=None)
-    tokenizer = create_tokenizer_from_alexa(args["data"]["max_len_words"], top_1M_websites[1].to_list())
+    tokenizer = N_grams(args["data"]["max_len_words"],"/mnt/nimble_storage/ilan/data/Balanced_02_10_2022_08_19_56/train_data/important_ngrams_7_size=200000.json",
+                        "tld",'domain ngrams','path ngrams')
+
     high_freq_words = None
 
-    train_split, validation_split = [pd.read_parquet(os.path.join(args["data"]['data_dir'], 'debug_split_06_07_2022_11_32_17')),
-                                     pd.read_parquet(os.path.join(args["data"]['data_dir'], 'debug_split_06_07_2022_11_32_17'))]
+    train_split, validation_split = [pd.read_parquet(os.path.join(args["data"]['data_dir'], 'train_data'),columns=["normalized_url","label"]),
+                                     pd.read_parquet(os.path.join(args["data"]['data_dir'], 'validation_data'),columns=["normalized_url","label"])]
     train_urls_ = train_split["normalized_url"].to_list()
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
