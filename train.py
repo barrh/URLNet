@@ -147,24 +147,19 @@ if __name__=="__main__":
     tokenizer = create_tokenizer_from_alexa(FLAGS["data"]["max_len_words"], top_1M_websites[1].to_list())
     high_freq_words = None
     debug = False
-    data_we_train_on = "debug" if debug else "training_demo"
-    ds = pd.read_parquet(FLAGS["data"]['data_dir'],columns=["normalized_url","label"])
-    train_urls_ = ds[data_we_train_on]["normalized_url"].to_list()
+
+    train_urls_,train_labels = dataset_to_url_and_label(os.path.join(FLAGS["data"]['data_dir'],"train_data"))
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
         train_urls_,
-        ds[data_we_train_on]["label"].to_numpy(),
+        train_labels,
         tokenizer, high_freq_words, FLAGS)
 
     if not debug:
-        all_data = {}
-        for datatype in ["test_demo", "validation_demo"]:
-            urls_ = ds[datatype]["normalized_url"].to_list()
-            labels_ = ds[datatype]["label"].to_numpy()
-            all_data[datatype] = get_features_for_data(
-                urls_,
-                labels_,
-                tokenizer, high_freq_words, FLAGS)
+
+            all_data = {data_:get_features_for_data(*dataset_to_url_and_label(os.path.join(FLAGS["data"]['data_dir'],
+                                                                                           "{}_data".format(data_))),tokenizer,
+                                                    high_freq_words, FLAGS) for data_ in ("validation",)}
 
     with tf.Graph().as_default():
         session_conf = tf.compat.v1.ConfigProto(allow_soft_placement=True, log_device_placement=False)
@@ -218,7 +213,7 @@ if __name__=="__main__":
             train_batches, nb_batches_per_epoch, nb_batches = make_batches(x_train_char_seq, x_train_word, x_train_char,
                                                                            y_train, FLAGS["train"]["batch_size"],
                                                                            FLAGS['train']['nb_epochs'], True)
-
+            max_dev_acc = 0.0
             min_dev_loss = float('Inf')
             dev_loss = float('Inf')
             dev_acc = 0.0
@@ -240,7 +235,8 @@ if __name__=="__main__":
                         trn_acc='{:.3e}'.format(acc),
                         dev_loss='{:.3e}'.format(dev_loss),
                         dev_acc='{:.3e}'.format(dev_acc),
-                        min_dev_loss='{:.3e}'.format(min_dev_loss))
+                        min_dev_loss='{:.3e}'.format(min_dev_loss),
+                        max_dev_acc='{:.3e}'.format(max_dev_acc))
                 if step % FLAGS["log"]["eval_every"] == 0 or idx == (nb_batches - 1):
                     total_loss = 0
                     nb_corrects = 0
@@ -249,11 +245,11 @@ if __name__=="__main__":
                     #        for datatype in ["test_demo", "validation_demo"]:
 
                     #all_data[datatype]
-                    test_batches = make_batches(all_data["validation_demo"][6], all_data["validation_demo"][5],
-                                                all_data["validation_demo"][4],
-                                                all_data["validation_demo"][7],
+                    validation_batches = make_batches(all_data["validation"][6], all_data["validation"][5],
+                                                all_data["validation"][4],
+                                                all_data["validation"][7],
                                                 FLAGS['train']['batch_size'], 1, False)
-                    for test_batch in test_batches:
+                    for test_batch in validation_batches:
                         x_test_batch, y_test_batch = prep_batches(test_batch)
                         step, batch_dev_loss, batch_dev_acc = train_dev_step(x_test_batch, y_test_batch,
                                                                              emb_mode=FLAGS["model"]["emb_mode"],
@@ -268,6 +264,7 @@ if __name__=="__main__":
                         f.write(
                             "{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), dev_loss, dev_acc))
                     if step % FLAGS["log"]["checkpoint_every"] == 0 or idx == (nb_batches - 1):
-                        if dev_loss < min_dev_loss:
+
+                        if dev_acc > max_dev_acc:
                             path = saver.save(sess, checkpoint_prefix, global_step=step)
-                            min_dev_loss = dev_loss
+                            max_dev_acc = dev_acc

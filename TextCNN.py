@@ -18,9 +18,9 @@ class TextCNN(object):
         l2_loss = tf.constant(0.0) 
         with tf.name_scope("embedding"): 
             if mode == 4 or mode == 5: 
-                self.char_w = tf.Variable(tf.tf.compat.v1.random_uniform([char_ngram_vocab_size, embedding_size], -1.0, 1.0), name="char_emb_w") 
+                self.char_w = tf.Variable(tf.compat.v1.random_uniform([char_ngram_vocab_size, embedding_size], -1.0, 1.0), name="char_emb_w") 
             if mode == 2 or mode == 3 or mode == 4 or mode == 5: 
-                self.word_w = tf.Variable(tf.tf.compat.v1.random_uniform([word_ngram_vocab_size, embedding_size], -1.0, 1.0), name="word_emb_w")
+                self.word_w = tf.Variable(tf.compat.v1.random_uniform([word_ngram_vocab_size, embedding_size], -1.0, 1.0), name="word_emb_w")
             if mode == 1 or mode == 3 or mode == 5: 
                 self.char_seq_w = tf.Variable(tf.compat.v1.random_uniform([char_vocab_size, embedding_size], -1.0, 1.0), name="char_seq_emb_w")
      
@@ -102,17 +102,17 @@ class TextCNN(object):
         ############################### CONCAT WORD AND CHAR BRANCH ############################
         if mode == 3 or mode == 5: 
             with tf.name_scope("word_char_concat"): 
-                ww = tf.compat.v1.get_variable("ww", shape=(num_filters_total, 512), initializer=tf.contrib.layers.xavier_initializer())
+                ww = tf.compat.v1.get_variable("ww", shape=(num_filters_total, 512))
                 bw = tf.Variable(tf.constant(0.1, shape=[512]), name="bw") 
                 l2_loss += tf.nn.l2_loss(ww) 
                 l2_loss += tf.nn.l2_loss(bw) 
-                word_output = tf.nn.xw_plus_b(self.h_drop, ww, bw)
+                word_output = tf.compat.v1.nn.xw_plus_b(self.h_drop, ww, bw)
 
-                wc = tf.compat.v1.get_variable("wc", shape=(num_filters_total, 512), initializer=tf.contrib.layers.xavier_initializer())
+                wc = tf.compat.v1.get_variable("wc", shape=(num_filters_total, 512))
                 bc = tf.Variable(tf.constant(0.1, shape=[512]), name="bc") 
                 l2_loss += tf.nn.l2_loss(wc)
                 l2_loss += tf.nn.l2_loss(bc)
-                char_output = tf.nn.xw_plus_b(self.char_h_drop, wc, bc) 
+                char_output = tf.compat.v1.nn.xw_plus_b(self.char_h_drop, wc, bc)
             
                 self.conv_output = tf.concat([word_output, char_output], 1)              
         elif mode == 2 or mode == 4: 

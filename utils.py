@@ -2,10 +2,12 @@ import time
 import os 
 import numpy as np
 
-from bisect import bisect_left 
+from bisect import bisect_left
+
+import pandas as pd
 import tensorflow as tf 
 from tflearn.data_utils import to_categorical 
-
+from tld import get_tld
 
 import re
 
@@ -414,3 +416,16 @@ def save_test_result(labels, all_predictions, all_scores, output_dir):
         for i in range(len(output_labels)): 
             output = str(int(output_labels[i])) + '\t' + str(int(output_preds[i])) + '\t' + str(softmax_scores[i][1]) + '\n' 
             file.write(output) 
+
+def dataset_to_url_and_label(path):
+    ds = pd.read_parquet(path, columns=["normalized_url", "label"])
+    urls,labels = [],[]
+    for ind,item in ds.iterrows():
+        url = item.normalized_url
+        try:
+            get_tld(url)
+        except:
+            continue
+        urls.append(url)
+        labels.append(item.label)
+    return urls,np.array(labels).astype(bool)

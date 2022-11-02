@@ -4,15 +4,15 @@
     "max_len_chars": 200,
     "max_len_subwords": 20,
     "min_word_freq": 1,
-    "data_dir": "data/Malicious_domain_detection/",
+    "data_dir": "/mnt/nimble_storage/ilan/data/Balanced_debug_02_10_2022_08_19_56",
     "delimit_mode": 1,
-    "alexa_ranking": "data/Malicious_domain_detection/top-1m.csv"
+    "alexa_ranking": "/mnt/nimble_storage/data/Malicious_domain_detection/top-1m.csv"
   },
   "model":
   {
     "emb_dim": 32,
     "filter_sizes": "3,4,5,6",
-    "emb_mode": 1
+    "emb_mode": 3
   },
   "train": {
     "nb_epochs": 5,
