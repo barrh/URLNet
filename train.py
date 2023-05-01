@@ -43,46 +43,46 @@ def get_features_for_data(train_urls,labels_,tokenizer, high_freq_words, FLAGS):
 
 ###################################### Training #########################################################
 
-def train_dev_step(x, y, emb_mode, is_train=True):
+def train_dev_step(sess, cnnmodel, train_op, global_step, x, y, emb_mode, is_train=True):
     if is_train:
         p = 0.5
     else:
-        p = 1.0
+        p = 0.99 # 1.0
     if emb_mode == 1:
         feed_dict = {
-            cnn.input_x_char_seq: x[0],
-            cnn.input_y: y,
-            cnn.dropout_keep_prob: p}
+            cnnmodel.input_x_char_seq: x[0],
+            cnnmodel.input_y: y,
+            cnnmodel.dropout_keep_prob: p}
     elif emb_mode == 2:
         feed_dict = {
-            cnn.input_x_word: x[0],
-            cnn.input_y: y,
-            cnn.dropout_keep_prob: p}
+            cnnmodel.input_x_word: x[0],
+            cnnmodel.input_y: y,
+            cnnmodel.dropout_keep_prob: p}
     elif emb_mode == 3:
         feed_dict = {
-            cnn.input_x_char_seq: x[0],
-            cnn.input_x_word: x[1],
-            cnn.input_y: y,
-            cnn.dropout_keep_prob: p}
+            cnnmodel.input_x_char_seq: x[0],
+            cnnmodel.input_x_word: x[1],
+            cnnmodel.input_y: y,
+            cnnmodel.dropout_keep_prob: p}
     elif emb_mode == 4:
         feed_dict = {
-            cnn.input_x_word: x[0],
-            cnn.input_x_char: x[1],
-            cnn.input_x_char_pad_idx: x[2],
-            cnn.input_y: y,
-            cnn.dropout_keep_prob: p}
+            cnnmodel.input_x_word: x[0],
+            cnnmodel.input_x_char: x[1],
+            cnnmodel.input_x_char_pad_idx: x[2],
+            cnnmodel.input_y: y,
+            cnnmodel.dropout_keep_prob: p}
     elif emb_mode == 5:
         feed_dict = {
-            cnn.input_x_char_seq: x[0],
-            cnn.input_x_word: x[1],
-            cnn.input_x_char: x[2],
-            cnn.input_x_char_pad_idx: x[3],
-            cnn.input_y: y,
-            cnn.dropout_keep_prob: p}
+            cnnmodel.input_x_char_seq: x[0],
+            cnnmodel.input_x_word: x[1],
+            cnnmodel.input_x_char: x[2],
+            cnnmodel.input_x_char_pad_idx: x[3],
+            cnnmodel.input_y: y,
+            cnnmodel.dropout_keep_prob: p}
     if is_train:
-        _, step, loss, acc = sess.run([train_op, global_step, cnn.loss, cnn.accuracy], feed_dict)
+        _, step, loss, acc = sess.run([train_op, global_step, cnnmodel.loss, cnnmodel.accuracy], feed_dict)
     else:
-        step, loss, acc = sess.run([global_step, cnn.loss, cnn.accuracy], feed_dict)
+        step, loss, acc = sess.run([global_step, cnnmodel.loss, cnnmodel.accuracy], feed_dict)
     return step, loss, acc
 
 
@@ -134,21 +134,14 @@ def prep_batches(batch):
         x_batch.extend([x_char, x_char_pad_idx])
     return x_batch, y_batch
 
-if __name__=="__main__":
-
-    with open("configs/config.json", "r") as f_p:
-        FLAGS = json.load(f_p)
-
-    for key, val in FLAGS.items():
-        print("{}={}".format(key, val))
-
+def main():
     # urls, labels = read_data(FLAGS["data.data_dir"])
     top_1M_websites = pd.read_csv(FLAGS["data"]["alexa_ranking"], header=None)
     tokenizer = create_tokenizer_from_alexa(FLAGS["data"]["max_len_words"], top_1M_websites[1].to_list())
     high_freq_words = None
     debug = False
 
-    train_urls_,train_labels = dataset_to_url_and_label(os.path.join(FLAGS["data"]['data_dir'],"train_data"))
+    train_urls_,train_labels = dataset_to_url_and_label(os.path.join(FLAGS["data"]['data_dir'],"train_data.csv"))
 
     ngrams_dict, worded_id_x, words_dict, ngrams_dict, x_train_char, x_train_word, x_train_char_seq, y_train = get_features_for_data(
         train_urls_,
@@ -158,7 +151,7 @@ if __name__=="__main__":
     if not debug:
 
             all_data = {data_:get_features_for_data(*dataset_to_url_and_label(os.path.join(FLAGS["data"]['data_dir'],
-                                                                                           "{}_data".format(data_))),tokenizer,
+                                                                                           "{}_data.csv".format(data_))),tokenizer,
                                                     high_freq_words, FLAGS) for data_ in ("validation",)}
 
     with tf.Graph().as_default():
@@ -226,18 +219,19 @@ if __name__=="__main__":
             for idx in it:
                 batch = next(train_batches)
                 x_batch, y_batch = prep_batches(batch)
-                step, loss, acc = train_dev_step(x_batch, y_batch, emb_mode=FLAGS["model"]["emb_mode"], is_train=True)
+                step, loss, acc = train_dev_step(sess, cnn, train_op, global_step,
+                                                 x_batch, y_batch, emb_mode=FLAGS["model"]["emb_mode"], is_train=True)
                 if step % FLAGS["log"]["print_every"] == 0:
                     with open(train_log_dir, "a") as f:
                         f.write("{:d},{:s},{:e},{:e}\n".format(step, datetime.datetime.now().isoformat(), loss, acc))
                     it.set_postfix(
                         trn_loss='{:.3e}'.format(loss),
-                        trn_acc='{:.3e}'.format(acc),
-                        dev_loss='{:.3e}'.format(dev_loss),
-                        dev_acc='{:.3e}'.format(dev_acc),
-                        min_dev_loss='{:.3e}'.format(min_dev_loss),
-                        max_dev_acc='{:.3e}'.format(max_dev_acc))
-                if step % FLAGS["log"]["eval_every"] == 0 or idx == (nb_batches - 1):
+                        trn_acc='{:.2%}'.format(acc),
+                        tst_loss='{:.3e}'.format(dev_loss),
+                        tst_acc='{:.2%}'.format(dev_acc),
+                        min_tst_loss='{:.3e}'.format(min_dev_loss),
+                        max_tst_acc='{:.3e}'.format(max_dev_acc))
+                if step % FLAGS["log"]["eval_every"] == 0 or (idx == (nb_batches - 1)):
                     total_loss = 0
                     nb_corrects = 0
                     nb_instances = 0
@@ -251,7 +245,8 @@ if __name__=="__main__":
                                                 FLAGS['train']['batch_size'], 1, False)
                     for test_batch in validation_batches:
                         x_test_batch, y_test_batch = prep_batches(test_batch)
-                        step, batch_dev_loss, batch_dev_acc = train_dev_step(x_test_batch, y_test_batch,
+                        step, batch_dev_loss, batch_dev_acc = train_dev_step(sess, cnn, train_op, global_step,
+                                                                             x_test_batch, y_test_batch,
                                                                              emb_mode=FLAGS["model"]["emb_mode"],
                                                                              is_train=False)
                         nb_instances += x_test_batch[0].shape[0]
@@ -268,3 +263,13 @@ if __name__=="__main__":
                         if dev_acc > max_dev_acc:
                             path = saver.save(sess, checkpoint_prefix, global_step=step)
                             max_dev_acc = dev_acc
+
+
+if __name__=="__main__":
+    with open("configs/config.json", "r") as f_p:
+        FLAGS = json.load(f_p)
+
+    for key, val in FLAGS.items():
+        print("{}={}".format(key, val))
+
+    main()

@@ -4,9 +4,9 @@
     "max_len_chars": 200,
     "max_len_subwords": 20,
     "min_word_freq": 1,
-    "data_dir": "/mnt/nimble_storage/ilan/data/Balanced_debug_02_10_2022_08_19_56",
+    "data_dir": "datasets",
     "delimit_mode": 1,
-    "alexa_ranking": "/mnt/nimble_storage/data/Malicious_domain_detection/top-1m.csv"
+    "alexa_ranking": "datasets/top-1m.csv"
   },
   "model":
   {
@@ -15,15 +15,15 @@
     "emb_mode": 3
   },
   "train": {
-    "nb_epochs": 5,
+    "nb_epochs": 3,
     "batch_size": 128,
-    "l2_reg_lambda": 0.0,
-    "lr": 0.001
+    "l2_reg_lambda": 0.3,
+    "lr": 0.01
   },
   "log": {
     "output_dir": "./runs/10000",
     "print_every": 50,
-    "eval_every": 500,
+    "eval_every": 50,
     "checkpoint_every": 500
   }
 }
