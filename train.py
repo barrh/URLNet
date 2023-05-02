@@ -47,7 +47,7 @@ def train_dev_step(sess, cnnmodel, train_op, global_step, x, y, emb_mode, is_tra
     if is_train:
         p = 0.5
     else:
-        p = 0.99 # 1.0
+        p = 1.0
     if emb_mode == 1:
         feed_dict = {
             cnnmodel.input_x_char_seq: x[0],
